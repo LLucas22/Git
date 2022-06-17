@@ -120,6 +120,7 @@ In Rstudio : open project
 <li> Push changes to remote repo : <b> git push repo_name branch_name </b>
 <ul><li> Force the push : <b> git push -f repo_name branch_name</b></li></ul>
 </li>
+<li> if 403 github push failed on Windows go to control panel --> user accounts --> id manager --> Windows ID then remove the git credentials </li>
 <li> Pull : <b>git pull (--allow-unrelated-histories) repo_name branch_name </b></li>
 </ol>
 
