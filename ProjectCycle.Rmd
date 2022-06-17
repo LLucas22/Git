@@ -1,0 +1,145 @@
+---
+title: "R project cycle"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    css: doc.css
+---
+
+```{r setup, include=FALSE}
+## Global options
+knitr::opts_chunk$set(cache = TRUE,
+                      warning = FALSE)
+```
+
+# 1) <i>roxygen2</i> documentation guidelines
+
+<ol>
+<li><b> install.packages("roxygen2") </b></li>
+<li> Before a function use :
+<ul>
+#' @title function_name
+<br>#' @description function_description
+<br>#' @param param_name param_format
+<br>#' @return function_result
+<br>#' @examples function_in_action
+<br>#' @export
+</ul>
+<li>If in a R project and not in a R package then use the function <b>monygenise()</b> to generate the documentation</li>
+</ol>
+
+```{r}
+moxygenise <- function(codepath, manpath) {
+  
+  apply_at_level <- function(l, f, n, ...) {
+    ## function to apply a function at specified level of a nested list
+    if (n < 0) {
+      stop("Invalid parameter - n should be integer >= 0 -- APPLY_AT_LEVEL")
+    } else if (n==0) {
+      return(l)
+    } else if (n == 1) {
+      return(lapply(l, f, ...))
+    } else {
+      return(lapply(l, function(x) {apply_at_level(x, f, n-1)}))
+    }
+  }
+  
+  list.files.paths <- function(path, pattern) {
+    ## function to list absolute path of all files under specified path matching certain pattern
+    path <- normalizePath(path)
+    return(file.path(path, list.files(path=path, pattern=pattern)))
+  }
+  
+  sourcefiles <- list.files.paths(codepath, "\\.R$")
+  source_envs <- lapply(sourcefiles, roxygen2::env_file)
+  rd_blockss <- mapply(roxygen2::parse_file, sourcefiles, source_envs)
+  
+  help_topicss <- mapply(function(rdblock, sourceenv, sourcefile) {
+    return(roxygen2::roclet_process(
+      roxygen2::rd_roclet(), 
+      rdblock, sourceenv, 
+      dirname(sourcefile)))},
+    rd_blockss, source_envs, sourcefiles)
+  
+  rd_codes <- purrr::flatten(apply_at_level(help_topicss, format, 2))
+  
+  mapply(function(text, topic, outpath=manpath) {
+    cat("Write", topic, "to", outpath, "\n")
+    write(text, file=file.path(outpath, topic))
+  }, rd_codes, names(rd_codes))
+  return(NULL)
+}
+```
+
+
+# 2) <i>renv</i> control dependencies
+
+[renv package official website](https://rstudio.github.io/renv/articles/renv.html)
+
+<ol>
+<li> <b> install.packages("renv") </b> </li>
+<li> Initialize a new project-local environment with private R library : <b> renv::init() </b> </li>
+<li> Capture all packages installed in the project library : <b>renv::settings$snapshot.type("all") </b></li>
+<li> Save the state of the project in renv.lock file : <b>renv::snapshot() </b></li>
+<li> To restore the state of the project as encoded in renv.lock file : <b>renv::restore() </b></li>
+</ol>
+
+# 3) CI/CD pipelines for automatic deployement
+
+In git bash : cd project_folder_path
+In Rstudio : open project
+
+<ol>
+<li> <b>git init</b> </li>
+<li> Check remote repo name and address: <b>git remote -v </b>
+<ul>
+<li> Add new remote repo : <b>git remote add repo_name https</b></li>
+<li> Add remote repo to push only : <b> git remote set-url --add --push repo_name https </b></li>
+<li> Show remote repo : <b>git remote show origin</b></li>
+<li> Remove remote repo : <b> git remote remove repo_name</b></li>
+</ul>
+</li>
+<li> Check remote repo branch : <b>git branch</b>
+<ul>
+<li> If no branch exist : <b>git checkout -b branch_name</b></li>
+<li> If want to switch branch : <b>git switch -c branch_name</b></li>
+</ul>
+</li>
+<li> Check change in files : <b>git status</b></li>
+<li> Add changes :
+<ul>
+<li> Stage all changes (add,delete,modify) : <b>git add -A </b></li>
+<li> Stage (modify,delete) changes but not new files : <b>git add -u</b></li>
+<li> Stage (add,modify) but not deletion : <b>git add .</b></li>
+</ul>
+</li>
+<li> Remove file or folder : <b>git rm -r (--cached) folder_name</b></li>
+<li> Check committed changes : <b> git status</b></li>
+<li> Commit to local repo : <b> git commit -m "commit_message"</b></li>
+<li> Push changes to remote repo : <b> git push repo_name branch_name </b>
+<ul><li> Force the push : <b> git push -f repo_name branch_name</b></li></ul>
+</li>
+<li> Pull : <b>git pull (--allow-unrelated-histories) repo_name branch_name </b></li>
+</ol>
+
+# 4) Use python in R
+
+[Support Rstudio website](https://support.rstudio.com/hc/en-us/articles/360023654474-Installing-and-Configuring-Python-with-RStudio)
+
+<ol>
+<li> Go to python shell prompt/double click pip file in Python folder </li>
+<li> Ensure that your installation of python has the virtualenv package installed : pip install virtualenv </li>
+<li> Create a python environment in your project :
+<ol><li> cd (/d if disk change) path_to_project_dir</li>
+<li> virtualenv env_name</li></ol></li>
+<li> Activate your python environment : <b>env_name\\Scripts\\activate</b></li>
+<li> Check the correct version of Python is activated : where python </li>
+<li> Install python package in environement : pip install package_name</li>
+<li> Go to RStudio IDE + open project </li>
+<li> Install reticulate package : install.packages("reticulate") </li>
+<li> Configure reticulate to point to Python executable in the virtualenv : Sys.setenv(RETICULATE_PYTHON = "env_name/Scripts/python")</li>
+<li> Restart R session </li>
+<li> Check reticulate is configured for the correct version of python : reticulate::py_config() </li>
+</ol>
+
